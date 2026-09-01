@@ -1,19 +1,19 @@
 # DOTS Swarm — Handoff
 
-Последнее обновление: 2026-08-31
+Последнее обновление: 2026-09-02
 
 ## Состояние проекта
 
 - Этап: фундамент игровой сцены
-- Выполнено: 3 из 16 MVP-итераций; итерация 4 реализована и ожидает проверки в Unity
+- Выполнено: 4 из 16 MVP-итераций; итерация 5 реализована и ожидает проверки в Unity
 - Репозиторий: Git инициализирован
 - Unity-проект: создан на Unity 6.4 с URP и DOTS-пакетами
 - Цель MVP: трёхминутная survivor-сессия с 20 000 активных врагов при стабильных 60 FPS
 
 > [!IMPORTANT]
-> **Текущая задача — итерация 4: Enemy spawning.**
+> **Текущая задача — итерация 5: Enemy pursuit.**
 >
-> Реализация завершена. Перед коммитом нужен чистый импорт в открытом Unity Editor. Итерацию 5 до этого не начинать.
+> Реализация завершена. Перед коммитом нужен чистый импорт в открытом Unity Editor и запуск всех 12 Edit Mode-тестов. Итерацию 6 до этого не начинать.
 
 ## Правила итерации
 
@@ -25,20 +25,29 @@
 
 ## Текущая итерация
 
-### 4. Enemy spawning — UNITY CHECK PENDING
+### 5. Enemy pursuit — UNITY CHECK PENDING
+
+- [x] Добавить настраиваемую скорость в baked `Enemy`.
+- [x] Реализовать `EnemyMovementSystem` через `ISystem` и `IJobEntity`.
+- [x] Включить Burst, `Unity.Mathematics` и параллельный schedule.
+- [x] Покрыть направление, overshoot и прогон 10 000 врагов без managed allocations Edit Mode-тестами.
+
+Локальная проверка: runtime и test assembly компилируются с Unity Entities source generators; 11 чисто managed test-методов проходят через Unity Mono из консоли. Интеграционный тест на 10 000 ECS-сущностей требует процесса Unity Editor из-за нативных Unity internal calls. Управление открытым Editor было отклонено средой, поэтому его импорт и запуск полного набора тестов остаются pending.
+
+Критерий готовности: открытый Unity Editor чисто импортирует и компилирует проект, SubScene импортируется, 12 Edit Mode-тестов проходят из консоли. Ручную проверку движения врагов выполняет разработчик.
+
+Плановый коммит: `feat(enemy): add Burst-powered pursuit`
+
+## Завершённые итерации
+
+### 4. Enemy spawning — COMPLETE
 
 - [x] Создать Enemy prefab и baker.
 - [x] Добавить `SpawnConfig`.
 - [x] Реализовать spawn по радиусу и с лимитом через ECB.
 - [x] Покрыть spawn budget, лимит и расчёт позиций Edit Mode-тестами.
 
-Локальная проверка: runtime и test assembly компилируются с Unity Entities source generators; 8 test-методов проходят через Unity Mono из консоли. Отдельный Unity Editor не смог завершить чистый импорт из-за конфликта с Unity Licensing Client уже открытого Editor.
-
-Критерий готовности: открытый Unity Editor чисто импортирует и компилирует проект, SubScene импортируется, 8 Edit Mode-тестов проходят из консоли. Ручную проверку появления врагов выполняет разработчик.
-
-Плановый коммит: `feat(spawn): add configurable enemy spawning`
-
-## Завершённые итерации
+Коммит: `feat(spawn): add configurable enemy spawning` (`ab4c7c8`)
 
 ### 3. Player movement — COMPLETE
 
@@ -79,12 +88,6 @@
 Коммит: `chore(project): bootstrap Unity DOTS project`
 
 ## MVP backlog
-
-- [ ] **5. Enemy pursuit**
-  - Реализовать `EnemyMovementSystem` через `ISystem` и `IJobEntity`.
-  - Включить Burst и `Unity.Mathematics`.
-  - Проверить параллельное движение 10 000 врагов без managed allocations.
-  - Коммит: `feat(enemy): add Burst-powered pursuit`
 
 - [ ] **6. Enemy spatial grid**
   - Реализовать system-owned `NativeParallelMultiHashMap`.

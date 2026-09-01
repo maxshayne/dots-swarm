@@ -103,3 +103,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c8d9996e1e9d4015b74a44b79565a17f, type: 3}
   m_Name:
   m_EditorClassIdentifier: DotsSwarm.Runtime::DotsSwarm.Gameplay.EnemyAuthoring
+  movementSpeed: 3
