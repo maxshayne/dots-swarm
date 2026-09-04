@@ -1,19 +1,19 @@
 # DOTS Swarm — Handoff
 
-Последнее обновление: 2026-09-02
+Последнее обновление: 2026-09-05
 
 ## Состояние проекта
 
 - Этап: фундамент игровой сцены
-- Выполнено: 4 из 16 MVP-итераций; итерация 5 реализована и ожидает проверки в Unity
+- Выполнено: 5 из 16 MVP-итераций; итерация 6 реализована и проверена, ожидает коммита
 - Репозиторий: Git инициализирован
 - Unity-проект: создан на Unity 6.4 с URP и DOTS-пакетами
 - Цель MVP: трёхминутная survivor-сессия с 20 000 активных врагов при стабильных 60 FPS
 
 > [!IMPORTANT]
-> **Текущая задача — итерация 5: Enemy pursuit.**
+> **Текущая задача — итерация 6: Enemy spatial grid.**
 >
-> Реализация завершена. Перед коммитом нужен чистый импорт в открытом Unity Editor и запуск всех 12 Edit Mode-тестов. Итерацию 6 до этого не начинать.
+> Реализация и автоматическая проверка завершены. После ручного коммита переходить к итерации 7; до этого её не начинать.
 
 ## Правила итерации
 
@@ -25,20 +25,31 @@
 
 ## Текущая итерация
 
-### 5. Enemy pursuit — UNITY CHECK PENDING
+### 6. Enemy spatial grid — READY TO COMMIT
+
+- [x] Реализовать system-owned `NativeParallelMultiHashMap`.
+- [x] Настроить геометрический рост capacity, disposal и явные job dependencies.
+- [x] Покрыть cell math, соседние клетки, rebuild и рост capacity Edit Mode-тестами.
+- [x] Устранить найденную при контрольном импорте Burst-ошибку в query setup `SpawnSystem`.
+
+Проверка: Unity 6000.4.5f1 в batchmode чисто импортировал и скомпилировал проект; Tundra build и Burst IL post-processing завершились без ошибок. Все 17 Edit Mode-тестов прошли из консоли, включая прогон 10 000 врагов без managed allocations и 5 новых spatial-grid тестов.
+
+Критерий готовности выполнен. Ручные проверки и Play Mode не запускались согласно правилам проекта.
+
+Плановый коммит: `feat(spatial): build reusable enemy grid`
+
+## Завершённые итерации
+
+### 5. Enemy pursuit — COMPLETE
 
 - [x] Добавить настраиваемую скорость в baked `Enemy`.
 - [x] Реализовать `EnemyMovementSystem` через `ISystem` и `IJobEntity`.
 - [x] Включить Burst, `Unity.Mathematics` и параллельный schedule.
 - [x] Покрыть направление, overshoot и прогон 10 000 врагов без managed allocations Edit Mode-тестами.
 
-Локальная проверка: runtime и test assembly компилируются с Unity Entities source generators; 11 чисто managed test-методов проходят через Unity Mono из консоли. Интеграционный тест на 10 000 ECS-сущностей требует процесса Unity Editor из-за нативных Unity internal calls. Управление открытым Editor было отклонено средой, поэтому его импорт и запуск полного набора тестов остаются pending.
+Проверка: Unity 6000.4.5f1 чисто импортировал и скомпилировал runtime/test assemblies; все исходные 12 Edit Mode-тестов прошли в составе полного набора из 17 тестов. Ручную проверку движения врагов выполняет разработчик.
 
-Критерий готовности: открытый Unity Editor чисто импортирует и компилирует проект, SubScene импортируется, 12 Edit Mode-тестов проходят из консоли. Ручную проверку движения врагов выполняет разработчик.
-
-Плановый коммит: `feat(enemy): add Burst-powered pursuit`
-
-## Завершённые итерации
+Коммит: `feat(enemy): add Burst-powered pursuit` (`fc613da`)
 
 ### 4. Enemy spawning — COMPLETE
 
@@ -88,12 +99,6 @@
 Коммит: `chore(project): bootstrap Unity DOTS project`
 
 ## MVP backlog
-
-- [ ] **6. Enemy spatial grid**
-  - Реализовать system-owned `NativeParallelMultiHashMap`.
-  - Настроить capacity, disposal и явные job dependencies.
-  - Покрыть cell math и поиск соседних клеток тестами.
-  - Коммит: `feat(spatial): build reusable enemy grid`
 
 - [ ] **7. Automatic weapon**
   - Добавить weapon cooldown.

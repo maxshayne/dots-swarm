@@ -1,6 +1,7 @@
 using DotsSwarm.Core;
 using DotsSwarm.Gameplay;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -17,9 +18,10 @@ namespace DotsSwarm.Spawning
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            enemyQuery = state.GetEntityQuery(
-                ComponentType.ReadOnly<Enemy>(),
-                ComponentType.Exclude<Prefab>());
+            enemyQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<Enemy>()
+                .WithNone<Prefab>()
+                .Build(ref state);
 
             state.RequireForUpdate<SpawnConfig>();
             state.RequireForUpdate<SpawnState>();
