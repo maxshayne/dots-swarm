@@ -317,6 +317,7 @@ GameObject:
   - component: {fileID: 1900000202}
   - component: {fileID: 1900000203}
   - component: {fileID: 1900000204}
+  - component: {fileID: 1900000205}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -409,6 +410,23 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier: DotsSwarm.Runtime::DotsSwarm.Gameplay.PlayerAuthoring
   movementSpeed: 10
+--- !u!114 &1900000205
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1900000200}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: acf600fb144140b4b50e4038514d461f, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: DotsSwarm.Runtime::DotsSwarm.Gameplay.WeaponAuthoring
+  projectilePrefab: {fileID: 11400000, guid: 27f0eefe1cd74e7e8289d06ae1bd6c74, type: 3}
+  cooldown: 0.2
+  range: 20
+  projectileSpeed: 30
+  projectileLifetime: 2
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

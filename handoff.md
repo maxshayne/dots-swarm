@@ -5,15 +5,15 @@
 ## Состояние проекта
 
 - Этап: фундамент игровой сцены
-- Выполнено: 5 из 16 MVP-итераций; итерация 6 реализована и проверена, ожидает коммита
+- Выполнено: 6 из 16 MVP-итераций; итерации 7 и 8 реализованы и проверены, ожидают общего коммита
 - Репозиторий: Git инициализирован
 - Unity-проект: создан на Unity 6.4 с URP и DOTS-пакетами
 - Цель MVP: трёхминутная survivor-сессия с 20 000 активных врагов при стабильных 60 FPS
 
 > [!IMPORTANT]
-> **Текущая задача — итерация 6: Enemy spatial grid.**
+> **Текущие задачи — итерации 7 и 8: Automatic weapon и Projectile simulation.**
 >
-> Реализация и автоматическая проверка завершены. После ручного коммита переходить к итерации 7; до этого её не начинать.
+> Две итерации взяты вместе по прямому запросу разработчика. Реализация и автоматическая проверка завершены. После ручного коммита переходить к итерации 9; до этого её не начинать.
 
 ## Правила итерации
 
@@ -23,22 +23,46 @@
 4. Codex не выполняет `git commit`, а отдаёт одну готовую строку Conventional Commit.
 5. После ручного коммита текущей становится следующая незавершённая итерация.
 
-## Текущая итерация
+## Текущие итерации
 
-### 6. Enemy spatial grid — READY TO COMMIT
+### 7. Automatic weapon — READY TO COMMIT
+
+- [x] Добавить baked `Weapon` и `WeaponState` с настраиваемыми cooldown, range, скоростью и lifetime пуль.
+- [x] Реализовать Burst `WeaponSystem` и поиск ближайшего врага через spatial grid во всех клетках радиуса, с отсечением по дистанции и стабильным выбором при равных расстояниях.
+- [x] Создавать projectile entities через ECB `ParallelWriter`, возвращать reader dependency владельцу grid.
+- [x] Создать Projectile prefab с baker и материалом, подключить оружие к Player в `ArenaSubScene`.
+- [x] Покрыть cooldown, границу радиуса, отсутствие цели, совпадающие позиции, сравнение с brute-force oracle и rebuild после чтения grid.
+
+### 8. Projectile simulation — READY TO COMMIT
+
+- [x] Реализовать движение пуль через Burst `ISystem` и параллельный `IJobEntity`.
+- [x] Добавить lifetime и удаление через ECB `ParallelWriter`, включая нулевой lifetime и большой шаг времени.
+- [x] Ограничить движение оставшимся lifetime; продолжать обработку пуль после удаления игрока.
+- [x] Покрыть движение, expiry, сохранность prefab, удаление 10 000 пуль и общий цикл выстрел → движение → удаление в отсортированной группе систем.
+
+Проверка: Unity 6000.4.5f1 в batchmode импортировал assets и скомпилировал проект без ошибок. Финальный запуск из консоли с `-burst-force-sync-compilation`: все 33 Edit Mode-теста прошли (17 исходных и 16 новых), без предупреждений о порядке систем. Открытого Editor на момент проверки не было. Standalone build и Play Mode не запускались.
+
+Артефакты проверки (локальные, Git игнорирует): `Logs/verify-weapon-projectile.log`, `Logs/weapon-projectile-results.xml`.
+
+Ручные проверки разработчику:
+- В `Main` дождаться врагов в радиусе 20: игрок автоматически выпускает жёлтые пули в ближайшую цель.
+- Проверить стрельбу при WASD-движении, движение пуль и исчезновение примерно через 2 секунды.
+- Попадания, урон и уничтожение врагов появятся в итерации 9; текущие пули проходят через врагов.
+
+Общий плановый коммит: `feat(weapon): add auto fire and projectile expiry`
+
+## Завершённые итерации
+
+### 6. Enemy spatial grid — COMPLETE
 
 - [x] Реализовать system-owned `NativeParallelMultiHashMap`.
 - [x] Настроить геометрический рост capacity, disposal и явные job dependencies.
 - [x] Покрыть cell math, соседние клетки, rebuild и рост capacity Edit Mode-тестами.
 - [x] Устранить найденную при контрольном импорте Burst-ошибку в query setup `SpawnSystem`.
 
-Проверка: Unity 6000.4.5f1 в batchmode чисто импортировал и скомпилировал проект; Tundra build и Burst IL post-processing завершились без ошибок. Все 17 Edit Mode-тестов прошли из консоли, включая прогон 10 000 врагов без managed allocations и 5 новых spatial-grid тестов.
+Проверка: Unity 6000.4.5f1 чисто импортировал и скомпилировал проект; все исходные 17 Edit Mode-тестов прошли, включая прогон 10 000 врагов без managed allocations и 5 spatial-grid тестов.
 
-Критерий готовности выполнен. Ручные проверки и Play Mode не запускались согласно правилам проекта.
-
-Плановый коммит: `feat(spatial): build reusable enemy grid`
-
-## Завершённые итерации
+Коммит: `feat(spatial): build reusable enemy grid` (`e3bcaea`)
 
 ### 5. Enemy pursuit — COMPLETE
 
@@ -99,17 +123,6 @@
 Коммит: `chore(project): bootstrap Unity DOTS project`
 
 ## MVP backlog
-
-- [ ] **7. Automatic weapon**
-  - Добавить weapon cooldown.
-  - Искать ближайшего врага через spatial grid.
-  - Создавать projectile entities через ECB.
-  - Коммит: `feat(weapon): add grid-based auto fire`
-
-- [ ] **8. Projectile simulation**
-  - Реализовать движение пуль.
-  - Добавить lifetime и гарантированное удаление.
-  - Коммит: `feat(projectile): add movement and expiry`
 
 - [ ] **9. Combat pipeline**
   - Добавить grid-based hit detection.
@@ -176,4 +189,7 @@
 - Пули MVP: уничтожаются после первого попадания.
 - Input и UI остаются MonoBehaviour boundary-слоями.
 - Brute-force target search разрешён только как тестовый oracle.
+- Оружие ищет цель на плоскости XZ в настраиваемом радиусе; при равной дистанции выбирает меньший Entity index/version.
+- Cooldown запускается после успешного выстрела; максимум один выстрел за update, без накопления очереди за время простоя или длинного кадра.
+- Пули создаются в конце Simulation через ECB и начинают движение на следующем update. Порядок: grid → weapon → projectile movement → transforms → EndSimulation ECB; weapon также ждёт PlayerMovementSystem.
 - Финальные показатели снимаются в standalone build, а не в Editor.
