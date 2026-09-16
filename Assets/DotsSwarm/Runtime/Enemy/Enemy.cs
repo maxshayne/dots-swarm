@@ -6,6 +6,8 @@ namespace DotsSwarm.Gameplay
     public struct Enemy : IComponentData
     {
         public const float DefaultMovementSpeed = 3f;
+        // World-space XZ radius of the MVP enemy prefab (diameter 0.8).
+        public const float CollisionRadius = 0.4f;
 
         public float MovementSpeed;
 

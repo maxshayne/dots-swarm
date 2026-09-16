@@ -104,3 +104,4 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier: DotsSwarm.Runtime::DotsSwarm.Gameplay.EnemyAuthoring
   movementSpeed: 3
+  health: 3

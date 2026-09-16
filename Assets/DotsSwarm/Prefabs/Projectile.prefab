@@ -103,3 +103,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5d43ab631aa7497286d07428c70f4eac, type: 3}
   m_Name:
   m_EditorClassIdentifier: DotsSwarm.Runtime::DotsSwarm.Gameplay.ProjectileAuthoring
+  damage: 1
+  radius: 0.125
