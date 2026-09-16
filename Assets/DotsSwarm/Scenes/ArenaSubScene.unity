@@ -410,6 +410,9 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier: DotsSwarm.Runtime::DotsSwarm.Gameplay.PlayerAuthoring
   movementSpeed: 10
+  health: 10
+  contactDamage: 1
+  contactInterval: 0.5
 --- !u!114 &1900000205
 MonoBehaviour:
   m_ObjectHideFlags: 0

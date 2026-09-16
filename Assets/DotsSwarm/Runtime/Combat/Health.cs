@@ -6,6 +6,7 @@ namespace DotsSwarm.Gameplay
     public struct Health : IComponentData
     {
         public const int DefaultEnemyHealth = 3;
+        public const int DefaultPlayerHealth = 10;
 
         public int Current;
 
