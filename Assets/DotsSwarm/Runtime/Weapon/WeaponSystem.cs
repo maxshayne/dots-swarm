@@ -25,6 +25,9 @@ namespace DotsSwarm.Gameplay
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            if (SystemAPI.TryGetSingleton<GameSession>(out var session) && !session.CanSimulate)
+                return;
+
             var gridHandle = state.WorldUnmanaged
                 .GetExistingUnmanagedSystem<EnemySpatialGridSystem>();
             if (gridHandle == SystemHandle.Null)

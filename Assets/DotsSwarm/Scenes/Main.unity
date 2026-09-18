@@ -416,6 +416,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1900000101}
   - component: {fileID: 1900000102}
+  - component: {fileID: 1900000103}
   m_Layer: 0
   m_Name: Player Input
   m_TagString: Untagged
@@ -452,6 +453,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: DotsSwarm.Runtime::DotsSwarm.Gameplay.PlayerInputBridge
   inputActions: {fileID: -944628639613478452, guid: 289c1b55c9541489481df5cc06664110, type: 3}
   moveActionName: Player/Move
+--- !u!114 &1900000103
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1900000100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d3d42cf514d84c3cb086b1f98d1c01be, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: DotsSwarm.Runtime::DotsSwarm.Gameplay.GameSessionBridge
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -3,6 +3,8 @@
     "rootNamespace": "DotsSwarm.Tests",
     "references": [
         "DotsSwarm.Runtime",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI",
         "Unity.Collections",
         "Unity.Entities",
         "Unity.Mathematics",

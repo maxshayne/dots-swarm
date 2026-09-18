@@ -69,6 +69,10 @@ namespace DotsSwarm.Spatial
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            if (SystemAPI.TryGetSingleton<GameSession>(out var session)
+                && !session.CanSimulate && !session.RestartedThisFrame)
+                return;
+
             var inputDependency = JobHandle.CombineDependencies(
                 state.Dependency,
                 gridDependency);

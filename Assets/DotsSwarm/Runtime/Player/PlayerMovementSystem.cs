@@ -21,6 +21,9 @@ namespace DotsSwarm.Gameplay
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            if (SystemAPI.TryGetSingleton<GameSession>(out var session) && !session.CanSimulate)
+                return;
+
             var move = SystemAPI.GetSingleton<PlayerInput>().Move;
             var arenaHalfExtents = SystemAPI.GetSingleton<GameConfig>().ArenaHalfExtents;
             var deltaTime = SystemAPI.Time.DeltaTime;

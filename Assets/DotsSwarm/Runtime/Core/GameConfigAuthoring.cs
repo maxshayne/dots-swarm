@@ -30,6 +30,8 @@ namespace DotsSwarm.Core
                 var entity = GetEntity(TransformUsageFlags.None);
                 var size = new float2(authoring.arenaSize.x, authoring.arenaSize.y);
                 AddComponent(entity, GameConfig.FromArenaSize(size));
+                AddComponent(entity, new DotsSwarm.Gameplay.GameSession());
+                AddComponent(entity, new DotsSwarm.Gameplay.BenchmarkState());
             }
         }
     }

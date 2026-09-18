@@ -25,6 +25,9 @@ namespace DotsSwarm.Gameplay
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            if (SystemAPI.TryGetSingleton<GameSession>(out var session) && !session.CanSimulate)
+                return;
+
             if (SystemAPI.Time.DeltaTime <= 0f)
             {
                 return;

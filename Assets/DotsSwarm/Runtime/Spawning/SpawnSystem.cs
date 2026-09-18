@@ -33,17 +33,22 @@ namespace DotsSwarm.Spawning
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            if (SystemAPI.TryGetSingleton<GameSession>(out var session) && !session.CanSimulate)
+                return;
+
             var config = SystemAPI.GetSingleton<SpawnConfig>();
             var spawnState = SystemAPI.GetSingletonRW<SpawnState>();
             var budget = spawnState.ValueRO.SpawnBudget;
-            var spawnCount = CalculateSpawnCount(
+            var isStress = SystemAPI.TryGetSingleton<BenchmarkState>(out var benchmark) && benchmark.IsStress;
+            var enemyCount = enemyQuery.CalculateEntityCount();
+            var spawnCount = isStress ? math.max(0, benchmark.TargetCount - enemyCount) : CalculateSpawnCount(
                 ref budget,
                 config.SpawnRate,
                 SystemAPI.Time.DeltaTime,
-                enemyQuery.CalculateEntityCount(),
+                enemyCount,
                 config.MaxEnemies);
 
-            spawnState.ValueRW.SpawnBudget = budget;
+            spawnState.ValueRW.SpawnBudget = isStress ? 0f : budget;
             if (spawnCount == 0)
             {
                 return;
@@ -67,7 +72,7 @@ namespace DotsSwarm.Spawning
                     prefabTransform.Position.y,
                     config.SpawnRadius,
                     arenaHalfExtents,
-                    config.RandomSeed,
+                    isStress ? BenchmarkState.RandomSeed : config.RandomSeed,
                     sequence++);
                 commandBuffer.SetComponent(enemy, transform);
             }
