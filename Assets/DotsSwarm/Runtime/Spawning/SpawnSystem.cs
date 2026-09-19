@@ -86,6 +86,9 @@ namespace DotsSwarm.Spawning
                     isStress ? BenchmarkState.RandomSeed : config.RandomSeed,
                     sequence++);
                 commandBuffer.SetComponent(enemy, transform);
+                // Playback happens after TransformSystemGroup: without this the first
+                // rendered frame uses the prefab's baked matrix and the enemy pops in at origin.
+                commandBuffer.SetComponent(enemy, new LocalToWorld { Value = transform.ToMatrix() });
             }
 
             spawnState.ValueRW.SpawnSequence = sequence;

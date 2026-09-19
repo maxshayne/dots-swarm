@@ -59,12 +59,15 @@ namespace DotsSwarm.Tests.Gameplay
             manager.AddBuffer<DamageEvent>(player);
             input = manager.CreateEntity(typeof(PlayerInput));
 
-            enemyPrefab = manager.CreateEntity(typeof(Prefab), typeof(Enemy), typeof(Health), typeof(LocalTransform));
+            // Baked prefabs carry LocalToWorld; spawns and shots set it on instantiation.
+            enemyPrefab = manager.CreateEntity(typeof(Prefab), typeof(Enemy), typeof(Health), typeof(LocalTransform),
+                typeof(LocalToWorld));
             manager.SetComponentData(enemyPrefab, Enemy.Create(2f));
             manager.SetComponentData(enemyPrefab, Health.Create(3));
             manager.SetComponentData(enemyPrefab, LocalTransform.Identity);
             manager.AddBuffer<DamageEvent>(enemyPrefab);
-            projectilePrefab = manager.CreateEntity(typeof(Prefab), typeof(Projectile), typeof(ProjectileCombat), typeof(LocalTransform));
+            projectilePrefab = manager.CreateEntity(typeof(Prefab), typeof(Projectile), typeof(ProjectileCombat),
+                typeof(LocalTransform), typeof(LocalToWorld));
             manager.SetComponentData(projectilePrefab, LocalTransform.Identity);
             manager.SetComponentData(projectilePrefab, ProjectileCombat.Create(1, 0.125f));
 

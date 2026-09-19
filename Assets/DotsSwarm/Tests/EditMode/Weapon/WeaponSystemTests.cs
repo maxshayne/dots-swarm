@@ -29,7 +29,9 @@ namespace DotsSwarm.Tests.Gameplay
             endSimulation = world.GetOrCreateSystemManaged<EndSimulationEntityCommandBufferSystem>();
             gridSystem = world.GetOrCreateSystem<EnemySpatialGridSystem>();
             weaponSystem = world.GetOrCreateSystem<WeaponSystem>();
-            prefab = entityManager.CreateEntity(typeof(Prefab), typeof(Projectile), typeof(LocalTransform));
+            // Baked prefabs carry LocalToWorld; firing sets it on instantiation.
+            prefab = entityManager.CreateEntity(typeof(Prefab), typeof(Projectile), typeof(LocalTransform),
+                typeof(LocalToWorld));
             entityManager.SetComponentData(prefab, LocalTransform.FromScale(0.25f));
             player = entityManager.CreateEntity(
                 typeof(Player), typeof(Weapon), typeof(WeaponState), typeof(LocalTransform));

@@ -53,8 +53,9 @@ namespace DotsSwarm.Tests.Gameplay
             manager.SetComponentData(sessionEntity, GameConfig.FromArenaSize(new float2(GameConfig.DefaultArenaSize)));
             input = manager.CreateEntity(typeof(PlayerInput));
 
+            // Baked prefabs carry LocalToWorld; spawns and shots set it on instantiation.
             var projectilePrefab = manager.CreateEntity(typeof(Prefab), typeof(Projectile),
-                typeof(ProjectileCombat), typeof(LocalTransform));
+                typeof(ProjectileCombat), typeof(LocalTransform), typeof(LocalToWorld));
             manager.SetComponentData(projectilePrefab, LocalTransform.Identity);
             manager.SetComponentData(projectilePrefab,
                 ProjectileCombat.Create(ProjectileCombat.DefaultDamage, ProjectileCombat.DefaultRadius));
@@ -70,7 +71,8 @@ namespace DotsSwarm.Tests.Gameplay
                 Weapon.DefaultRange, Weapon.DefaultProjectileSpeed, Weapon.DefaultProjectileLifetime));
             manager.AddBuffer<DamageEvent>(player);
 
-            var enemyPrefab = manager.CreateEntity(typeof(Prefab), typeof(Enemy), typeof(Health), typeof(LocalTransform));
+            var enemyPrefab = manager.CreateEntity(typeof(Prefab), typeof(Enemy), typeof(Health), typeof(LocalTransform),
+                typeof(LocalToWorld));
             manager.SetComponentData(enemyPrefab, Enemy.Create(Enemy.DefaultMovementSpeed));
             manager.SetComponentData(enemyPrefab, Health.Create(Health.DefaultEnemyHealth));
             manager.SetComponentData(enemyPrefab, LocalTransform.FromPosition(new float3(0f, 0.5f, 0f)));

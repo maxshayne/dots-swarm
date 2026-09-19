@@ -151,6 +151,8 @@ namespace DotsSwarm.Gameplay
 
                 var projectile = CommandBuffer.Instantiate(sortKey, weapon.ProjectilePrefab);
                 CommandBuffer.SetComponent(sortKey, projectile, projectileTransform);
+                // Same as enemy spawns: keep the first rendered frame off the prefab's matrix.
+                CommandBuffer.SetComponent(sortKey, projectile, new LocalToWorld { Value = projectileTransform.ToMatrix() });
                 CommandBuffer.SetComponent(sortKey, projectile, new Projectile
                 {
                     Velocity = velocity,

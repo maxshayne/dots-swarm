@@ -366,6 +366,8 @@ namespace DotsSwarm.Tests.Gameplay
         {
             var prefab = CreateProjectile(float3.zero, float3.zero, damage: 3);
             entityManager.AddComponent<Prefab>(prefab);
+            // Baked prefabs carry LocalToWorld; firing sets it on instantiation.
+            entityManager.AddComponent<LocalToWorld>(prefab);
             var player = entityManager.CreateEntity(
                 typeof(Player), typeof(Weapon), typeof(WeaponState), typeof(LocalTransform));
             entityManager.SetComponentData(player, LocalTransform.Identity);
