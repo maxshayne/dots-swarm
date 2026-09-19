@@ -12,9 +12,11 @@ namespace DotsSwarm.Gameplay
         private EntityQuery benchmarkQuery;
         private EntityQuery enemies;
         private EntityQuery projectiles;
+        private EntityQuery players;
         private GameSessionHud hud;
         private BenchmarkFrameTime frameTime;
         private int warmupFrames;
+        private int shownHealth;
         private bool needsRefresh;
 
         private void OnEnable()
@@ -40,6 +42,7 @@ namespace DotsSwarm.Gameplay
                 benchmarkQuery = manager.CreateEntityQuery(typeof(BenchmarkState));
                 enemies = manager.CreateEntityQuery(ComponentType.ReadOnly<Enemy>());
                 projectiles = manager.CreateEntityQuery(ComponentType.ReadOnly<Projectile>());
+                players = manager.CreateEntityQuery(ComponentType.ReadOnly<Player>(), ComponentType.ReadOnly<Health>());
                 ResetMeasurements();
             }
             if (sessionQuery.CalculateEntityCount() != 1 || benchmarkQuery.CalculateEntityCount() != 1)
@@ -63,7 +66,9 @@ namespace DotsSwarm.Gameplay
             }
             if (session.RestartedThisFrame) ResetMeasurements();
             hud.SetStatus(session.Status);
-            var refresh = needsRefresh;
+            var health = players.CalculateEntityCount() == 1 ? players.GetSingleton<Health>().Current : 0;
+            // Damage is shown immediately rather than at the next sampling window.
+            var refresh = needsRefresh || health != shownHealth;
             if (warmupFrames > 0) warmupFrames--;
             else refresh |= frameTime.AddFrame(Time.unscaledDeltaTime);
             if (!refresh) return;
@@ -72,7 +77,8 @@ namespace DotsSwarm.Gameplay
             // Observe counts after EndSimulation ECB playback; query caching avoids
             // entity arrays and per-frame query allocations.
             hud.Refresh(enemies.CalculateEntityCount(), projectiles.CalculateEntityCount(),
-                frameTime.Milliseconds, session, benchmark);
+                frameTime.Milliseconds, health, session, benchmark);
+            shownHealth = health;
             needsRefresh = false;
         }
 
@@ -118,6 +124,7 @@ namespace DotsSwarm.Gameplay
                 benchmarkQuery.Dispose();
                 enemies.Dispose();
                 projectiles.Dispose();
+                players.Dispose();
             }
             sessionWorld = null;
         }

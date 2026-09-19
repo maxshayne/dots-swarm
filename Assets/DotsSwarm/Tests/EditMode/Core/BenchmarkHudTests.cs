@@ -40,13 +40,13 @@ namespace DotsSwarm.Tests.Gameplay
         {
             var buffer = new char[BenchmarkHudText.Capacity];
             var session = new GameSession { Elapsed = 120.2f };
-            var length = BenchmarkHudText.Write(buffer, 10000, 42, 16.67f, session, default);
+            var length = BenchmarkHudText.Write(buffer, 10000, 42, 16.67f, 12, session, default);
             var text = new string(buffer, 0, length);
-            StringAssert.Contains("SURVIVAL  |  1:00", text);
+            StringAssert.Contains("SURVIVAL  |  1:00  |  HP 12", text);
             StringAssert.Contains("Enemies: 10000   Projectiles: 42", text);
             StringAssert.Contains("16.7 ms", text);
             var benchmark = new BenchmarkState { ActivePreset = BenchmarkPreset.Swarm50K };
-            length = BenchmarkHudText.Write(buffer, int.MaxValue, int.MaxValue, float.MaxValue, session, benchmark);
+            length = BenchmarkHudText.Write(buffer, int.MaxValue, int.MaxValue, float.MaxValue, int.MaxValue, session, benchmark);
             text = new string(buffer, 0, length);
             StringAssert.Contains("STRESS 50000  |  Seed 1", text);
             StringAssert.Contains("2147483647", text);
@@ -60,13 +60,13 @@ namespace DotsSwarm.Tests.Gameplay
             var sample = new BenchmarkFrameTime();
             var session = new GameSession();
             var benchmark = new BenchmarkState();
-            BenchmarkHudText.Write(buffer, 0, 0, 0f, session, benchmark);
+            BenchmarkHudText.Write(buffer, 0, 0, 0f, 12, session, benchmark);
             sample.AddFrame(1d / 60d);
             var before = GC.GetAllocatedBytesForCurrentThread();
             for (var i = 0; i < 1000; i++)
             {
                 sample.AddFrame(1d / 60d);
-                BenchmarkHudText.Write(buffer, i, i, sample.Milliseconds, session, benchmark);
+                BenchmarkHudText.Write(buffer, i, i, sample.Milliseconds, i, session, benchmark);
             }
             var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
             Assert.That(allocated, Is.Zero);
@@ -86,15 +86,15 @@ namespace DotsSwarm.Tests.Gameplay
             root.transform.Find("Benchmark/4: 50k").GetComponent<Button>().onClick.Invoke();
             Assert.That(selected, Is.EqualTo(BenchmarkPreset.Swarm50K));
             var session = new GameSession { Status = SessionStatus.Lost };
-            hud.Refresh(50000, 1, 16.6f, session, new BenchmarkState { ActivePreset = selected });
+            hud.Refresh(50000, 1, 16.6f, 12, session, new BenchmarkState { ActivePreset = selected });
             Assert.That(root.transform.Find("Result").gameObject.activeSelf, Is.True);
             root.transform.Find("Result/Restart (R)").GetComponent<Button>().onClick.Invoke();
             Assert.That(restarts, Is.EqualTo(1));
             session.Status = SessionStatus.Running;
-            hud.Refresh(50000, 1, 16.6f, session, default);
+            hud.Refresh(50000, 1, 16.6f, 12, session, default);
             Assert.That(root.transform.Find("Result").gameObject.activeSelf, Is.False);
             var before = GC.GetAllocatedBytesForCurrentThread();
-            for (var i = 0; i < 100; i++) hud.Refresh(50000 + i, i, 16.6f, session, default);
+            for (var i = 0; i < 100; i++) hud.Refresh(50000 + i, i, 16.6f, 12 - i % 13, session, default);
             var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
             Assert.That(allocated, Is.Zero, "Refreshing existing TMP text must not construct strings.");
         }

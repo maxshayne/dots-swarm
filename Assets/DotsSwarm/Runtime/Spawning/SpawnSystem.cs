@@ -41,14 +41,25 @@ namespace DotsSwarm.Spawning
             var budget = spawnState.ValueRO.SpawnBudget;
             var isStress = SystemAPI.TryGetSingleton<BenchmarkState>(out var benchmark) && benchmark.IsStress;
             var enemyCount = enemyQuery.CalculateEntityCount();
-            var spawnCount = isStress ? math.max(0, benchmark.TargetCount - enemyCount) : CalculateSpawnCount(
-                ref budget,
-                config.SpawnRate,
-                SystemAPI.Time.DeltaTime,
-                enemyCount,
-                config.MaxEnemies);
+            int spawnCount;
+            if (isStress)
+            {
+                spawnCount = math.max(0, benchmark.TargetCount - enemyCount);
+                budget = 0f;
+            }
+            else
+            {
+                var elapsed = spawnState.ValueRO.Elapsed;
+                var next = elapsed + math.max(0f, SystemAPI.Time.DeltaTime);
+                spawnCount = CalculateSpawnCount(
+                    ref budget,
+                    config.CalculateScheduledSpawns(next) - config.CalculateScheduledSpawns(elapsed),
+                    enemyCount,
+                    config.MaxEnemies);
+                spawnState.ValueRW.Elapsed = next;
+            }
 
-            spawnState.ValueRW.SpawnBudget = isStress ? 0f : budget;
+            spawnState.ValueRW.SpawnBudget = budget;
             if (spawnCount == 0)
             {
                 return;
@@ -82,8 +93,7 @@ namespace DotsSwarm.Spawning
 
         public static int CalculateSpawnCount(
             ref float spawnBudget,
-            float spawnRate,
-            float deltaTime,
+            float scheduledSpawns,
             int currentEnemyCount,
             int maxEnemies)
         {
@@ -94,8 +104,7 @@ namespace DotsSwarm.Spawning
                 return 0;
             }
 
-            var accumulatedBudget = math.max(0f, spawnBudget)
-                                    + math.max(0f, spawnRate) * math.max(0f, deltaTime);
+            var accumulatedBudget = math.max(0f, spawnBudget) + math.max(0f, scheduledSpawns);
             var wholeBudget = (int)math.min(math.floor(accumulatedBudget), int.MaxValue);
             var spawnCount = math.min(wholeBudget, availableCapacity);
             spawnBudget = spawnCount == availableCapacity
@@ -119,6 +128,10 @@ namespace DotsSwarm.Spawning
             var offset = new float2(math.cos(angle), math.sin(angle))
                          * math.max(0f, spawnRadius);
             var safeHalfExtents = math.max(float2.zero, arenaHalfExtents);
+            // Mirror an axis that leaves the arena: clamping alone would place wall
+            // spawns next to (or on) a player standing at the wall.
+            offset = math.select(offset, -offset, math.abs(center.xz + offset) > safeHalfExtents);
+            // The clamp remains for arenas narrower than the spawn radius.
             var position = math.clamp(
                 center.xz + offset,
                 -safeHalfExtents,

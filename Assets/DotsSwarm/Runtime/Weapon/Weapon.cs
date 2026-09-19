@@ -5,7 +5,7 @@ namespace DotsSwarm.Gameplay
 {
     public struct Weapon : IComponentData
     {
-        public const float DefaultCooldown = 0.2f;
+        public const float DefaultCooldown = 0.15f;
         public const float MinimumCooldown = 0.01f;
         public const float DefaultRange = 20f;
         public const float DefaultProjectileSpeed = 30f;

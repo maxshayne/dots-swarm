@@ -179,7 +179,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: DotsSwarm.Runtime::DotsSwarm.Spawning.SpawnConfigAuthoring
   enemyPrefab: {fileID: 100000, guid: 2bb763934b3f4f6fb09df4a6660aa116, type: 3}
   spawnRadius: 40
-  spawnRate: 200
+  initialSpawnRate: 3
+  peakSpawnRate: 425
+  rampDuration: 160
+  rampExponent: 2.5
   maxEnemies: 20000
   randomSeed: 1
 --- !u!1 &150538960
@@ -410,7 +413,7 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier: DotsSwarm.Runtime::DotsSwarm.Gameplay.PlayerAuthoring
   movementSpeed: 10
-  health: 10
+  health: 12
   contactDamage: 1
   contactInterval: 0.5
 --- !u!114 &1900000205
@@ -426,7 +429,7 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier: DotsSwarm.Runtime::DotsSwarm.Gameplay.WeaponAuthoring
   projectilePrefab: {fileID: 11400000, guid: 27f0eefe1cd74e7e8289d06ae1bd6c74, type: 3}
-  cooldown: 0.2
+  cooldown: 0.15
   range: 20
   projectileSpeed: 30
   projectileLifetime: 2

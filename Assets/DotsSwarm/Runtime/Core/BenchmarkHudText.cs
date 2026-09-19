@@ -9,7 +9,7 @@ namespace DotsSwarm.Gameplay
         public const int Capacity = 192;
 
         public static int Write(char[] buffer, int enemies, int projectiles, float milliseconds,
-            in GameSession session, in BenchmarkState benchmark)
+            int playerHealth, in GameSession session, in BenchmarkState benchmark)
         {
             var index = 0;
             Append(buffer, ref index, benchmark.IsStress ? "STRESS " : "SURVIVAL");
@@ -26,6 +26,8 @@ namespace DotsSwarm.Gameplay
                 buffer[index++] = ':';
                 buffer[index++] = (char)('0' + remaining % 60 / 10);
                 buffer[index++] = (char)('0' + remaining % 10);
+                Append(buffer, ref index, "  |  HP ");
+                Number(buffer, ref index, playerHealth);
             }
             Append(buffer, ref index, "\nEnemies: ");
             Number(buffer, ref index, enemies);

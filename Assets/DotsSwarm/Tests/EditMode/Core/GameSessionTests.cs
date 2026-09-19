@@ -187,7 +187,7 @@ namespace DotsSwarm.Tests.Gameplay
             manager.SetComponentData(player, new PlayerContactState { CooldownRemaining = 1f });
             manager.GetBuffer<DamageEvent>(player).Add(new DamageEvent { Amount = 100 });
             manager.SetComponentData(input, new PlayerInput { Move = new float2(1f) });
-            manager.SetComponentData(spawner, new SpawnState { SpawnBudget = 0.9f, SpawnSequence = 100u });
+            manager.SetComponentData(spawner, new SpawnState { SpawnBudget = 0.9f, Elapsed = 50f, SpawnSequence = 100u });
             SetSpawnRate(20f);
             EquipWeapon();
             Tick(1f);
@@ -206,6 +206,7 @@ namespace DotsSwarm.Tests.Gameplay
             Assert.That(manager.GetBuffer<DamageEvent>(player).Length, Is.Zero);
             Assert.That(manager.GetComponentData<SpawnState>(spawner).SpawnBudget, Is.Zero);
             Assert.That(manager.GetComponentData<SpawnState>(spawner).SpawnSequence, Is.Zero);
+            Assert.That(manager.GetComponentData<SpawnState>(spawner).Elapsed, Is.Zero, "Restart rewinds the spawn curve.");
             ref var gridSystem = ref world.Unmanaged.GetUnsafeSystemRef<EnemySpatialGridSystem>(grid);
             gridSystem.GridDependency.Complete();
             Assert.That(gridSystem.Grid.Count(), Is.Zero);
@@ -363,7 +364,7 @@ namespace DotsSwarm.Tests.Gameplay
         private void SetSpawnRate(float rate)
         {
             var config = manager.GetComponentData<SpawnConfig>(spawner);
-            config.SpawnRate = rate;
+            config.InitialSpawnRate = rate;
             manager.SetComponentData(spawner, config);
         }
 
