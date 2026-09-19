@@ -5,7 +5,7 @@
 ## Состояние проекта
 
 - Этап: фундамент игровой сцены
-- Выполнено: 14 из 16 MVP-итераций; итерация 15 в работе: инструменты замера и снятие sync points готовы и проверены автоматически, standalone-профилирование и замер на железе ждут разработчика
+- Выполнено: 14 из 16 MVP-итераций; итерация 15: цель p95 ≤ 16,67 мс при 20 000 врагов подтверждена release-бенчмарком (p95 4,0–4,7 мс), ждёт коммита результатов
 - Репозиторий: Git инициализирован
 - Unity-проект: создан на Unity 6.4 с URP и DOTS-пакетами
 - Цель MVP: трёхминутная survivor-сессия с 20 000 активных врагов при стабильных 60 FPS
@@ -13,7 +13,7 @@
 > [!IMPORTANT]
 > **Текущая задача — итерация 15: Performance target.**
 >
-> Итерация 14 закоммичена (`49dd015`, `539b981`). Первая часть итерации 15 в рабочем дереве, ждёт ручной проверки и коммита. Затем разработчик собирает release standalone build и запускает `-benchmark 20k` на зафиксированном железе; по результату решается, нужны ли дальнейшие оптимизации.
+> Код итерации 15 закоммичен (`02372d5`). Три release-прогона `-benchmark 20k` выполнили цель с запасом ~3,5× (худший p95 4,74 мс), дальнейшие оптимизации не нужны. В рабочем дереве — только результаты в handoff. После коммита переходить к итерации 16.
 
 ## Правила итерации
 
@@ -25,7 +25,7 @@
 
 ## Текущая итерация
 
-### 15. Performance target — IN PROGRESS: первая часть READY FOR MANUAL CHECK
+### 15. Performance target — TARGET MET, READY FOR COMMIT
 
 - [x] Считать p95 кадра: `FrameTimeHistory` хранит последние длительности кадров в кольце фиксированного размера и выдаёт avg/p50/p95/p99/max методом nearest rank. Массивы выделяются один раз; сводка сортирует копию без managed allocations. HUD показывает p95 за последние 600 кадров (~10 с при 60 FPS) рядом со средним за 0,25 с.
 - [x] Добавить автоматический бенчмарк для standalone: `dots-swarm.exe -benchmark 20k [-benchmark-warmup 20] [-benchmark-duration 30] [-benchmark-output <file.csv>]`. `BenchmarkRunner` отключает VSync и frame cap, включает stress-пресет, ждёт кадра с заполненным роем, прогревает, пишет каждый кадр по `Time.unscaledDeltaTime`, дописывает строку в CSV и закрывает player. Коды выхода: 0 — записано, 1 — неверные аргументы, 2 — нет сессии, 3 — ошибка записи.
@@ -33,33 +33,43 @@
 - [x] Закрепить `PlayerMovementSystem` перед `EnemyMovementSystem`: её main-thread foreach по `LocalTransform` иначе завершал бы jobs движения врагов и grid. В default world порядок и раньше был таким, но только по hash-сортировке; поведение не меняется.
 - [x] Отключить per-object motion vectors у Enemy и Projectile (`m_MotionVectors: 0`, Camera). Камера без TAA и motion blur их не рисует, а Entities Graphics пекла `unity_MatrixPreviousM` (64 байта на entity), каждый кадр копировала матрицы всего роя в `MatrixPreviousSystem` и загружала их на GPU. Изображение не меняется.
 - [x] Аудит без изменений кода. Managed allocations в кадре нет: HUD и bridges покрыты тестами. Grid растёт геометрически: до 32 768 элементов около 9 resize за сессию, не каждый кадр. Structural changes в установившемся режиме — только ECB-команды выстрелов, смертей и spawn, единицы за кадр. Одномоментное заполнение stress-пресета в замер не входит.
-- [ ] Собрать release standalone build, снять профиль и бенчмарк на зафиксированном железе (разработчик).
-- [ ] Если p95 > 16,67 мс, выбрать рычаг по профилю и повторить замер.
+- [x] Собрать release standalone build и снять бенчмарк на зафиксированном железе (разработчик): три прогона, p95 4,0–4,7 мс. Profiler-сессия не понадобилась.
+- [x] Если p95 > 16,67 мс, выбрать рычаг по профилю и повторить замер — не понадобилось.
 - [x] Завершить компиляцию Unity, автоматические тесты и проверку diff.
 
 CSV по умолчанию — `benchmark-results.csv` в `Application.persistentDataPath`; относительный `-benchmark-output` считается от рабочей директории. Строка содержит avg/p50/p95/p99/max, признак цели p95, min/max врагов за запись, разрешение, VSync, тип сборки (`release`/`development`/`editor`), graphics API, GPU, CPU и версию Unity. Повторные запуски дописывают строки под одним заголовком.
 
-Проверка: Editor закрыт, Unity 6000.4.5f1 из консоли в batchmode импортировал assets и скомпилировал runtime/test assemblies без ошибок и предупреждений; все прогоны с `-burst-force-sync-compilation`. Диагностический Play Mode-прогон до правок напечатал порядок Simulation в default world (`PlayerMovementSystem` уже шла перед `SpawnSystem`, `EnemyMovementSystem` и grid) и подтвердил, что prefabs пеклись с `MotionMode = Object`. Edit Mode: 153/153 (129 исходных и 24 новых), exit code 0. Play Mode: 11/11 (8 исходных и 3 новых), ~20 с, exit code 0; тест runner записал в Editor 1k-прогон (173 кадра, p95 6,9 мс — не показатель цели). При завершении Editor после Play Mode в логе, как и в итерации 14, `Leak detected: 2 preview scene(s) were not closed prior to shutdown`. Без ошибок Burst, job safety и предупреждений о порядке систем. `git diff --check` прошёл. Standalone build не собирался, бенчмарк на железе не запускался; в открытом Editor импорт не проверялся.
+Проверка: Editor закрыт, Unity 6000.4.5f1 из консоли в batchmode импортировал assets и скомпилировал runtime/test assemblies без ошибок и предупреждений; все прогоны с `-burst-force-sync-compilation`. Диагностический Play Mode-прогон до правок напечатал порядок Simulation в default world (`PlayerMovementSystem` уже шла перед `SpawnSystem`, `EnemyMovementSystem` и grid) и подтвердил, что prefabs пеклись с `MotionMode = Object`. Edit Mode: 153/153 (129 исходных и 24 новых), exit code 0. Play Mode: 11/11 (8 исходных и 3 новых), ~20 с, exit code 0; тест runner записал в Editor 1k-прогон (173 кадра, p95 6,9 мс — не показатель цели). При завершении Editor после Play Mode в логе, как и в итерации 14, `Leak detected: 2 preview scene(s) were not closed prior to shutdown`. Без ошибок Burst, job safety и предупреждений о порядке систем. `git diff --check` прошёл. Standalone build и бенчмарк на железе выполнил разработчик (результат ниже).
 
 Первый полный Play Mode-прогон упал: `EntityQuery.GetSingleton` в этой версии Entities только проверяет safety и не завершает jobs, а `GameSessionBridge` читал `GameSession`, который теперь пишет job. Bridge и runner вызывают `CompleteDependency()` у query перед чтением.
 
 Артефакты проверки (локальные, Git игнорирует): `Logs/verify-perf-order.log`, `Logs/perf-order-results.xml`, `Logs/verify-perf-editmode.log`, `Logs/perf-editmode-results.xml`, `Logs/verify-perf-playmode.log`, `Logs/perf-playmode-results.xml`.
 
-Протокол замера (разработчику):
+Протокол замера:
 1. Собрать Windows x64 standalone **без** Development Build. Закрыть фоновые приложения; ноутбук — от сети.
-2. Трижды подряд запустить `Builds\dots-swarm.exe -benchmark 20k -benchmark-output benchmark-results.csv`: 20 с прогрева и 30 с записи. Разрешение — по умолчанию проекта (1920×1080, FullScreenWindow); оно попадает в CSV.
+2. Трижды подряд запустить `Builds\dots-swarm.exe -benchmark 20k -benchmark-output <file.csv>`: 20 с прогрева и 30 с записи. FullScreenWindow берёт родное разрешение экрана; оно попадает в CSV.
 3. Цель выполнена, если во всех трёх строках `build = release`, `enemies_min` около 20 000 (убитых восполняет следующий update) и `p95_target_met = true` (`p95_ms ≤ 16.67`).
 4. При промахе — тот же запуск в Development Build с Profiler; строка пометится `development`. Определить, упирается ли кадр в GPU, render thread или main thread.
 
-Кандидаты, если упор в GPU: у Enemy `m_CastShadows: 1` при shadow distance 50, и весь рой рисуется второй раз в shadow map; меш врага — встроенная Sphere (768 треугольников, ~15 млн треугольников за проход при 20k). Отключение теней врагов или low-poly меш меняют картинку, поэтому решать разработчику. Если упор в main thread — смотреть playback EndSimulation ECB и загрузку данных Entities Graphics.
+Результат замера 2026-09-20 (release, Direct3D12, 2560×1440, VSync off, Unity 6000.4.5f1; NVIDIA GeForce RTX 4070, Intel Core i7-12700). Stress 20k, 20 с прогрева, 30 с записи; CSV лежат в `Builds/file.csv`, `file1.csv`, `file2.csv` (Git игнорирует):
+
+| Прогон | Кадров | avg, мс | p50, мс | p95, мс | p99, мс | max, мс | Врагов min–max |
+|---|---|---|---|---|---|---|---|
+| 1 | 10 138 | 2,96 | 3,02 | 4,05 | 4,67 | 8,43 | 19 999–20 000 |
+| 2 | 10 245 | 2,93 | 2,99 | 3,98 | 4,65 | 11,07 | 19 999–20 000 |
+| 3 | 9 930 | 3,02 | 2,94 | 4,74 | 5,61 | 12,36 | 19 999–20 000 |
+
+Цель `p95 ≤ 16,67 мс` выполнена во всех прогонах с запасом ~3,5× (~330 FPS в среднем); даже самый долгий кадр укладывается в бюджет 60 FPS. Границы замера: stress-пресет с неуязвимым игроком, который стоит на месте, поэтому к записи рой стянут к нему; одна машина. По числу врагов сценарий совпадает с пиком Survival (20 000 с ~2:41), но движение игрока и полный трёхминутный Survival в release не замерялись.
+
+Запас на будущее, если понадобится (например 50k или слабое железо): у Enemy `m_CastShadows: 1` при shadow distance 50, и весь рой рисуется второй раз в shadow map; меш врага — встроенная Sphere (768 треугольников, ~15 млн треугольников за проход при 20k). Оба рычага меняют картинку.
 
 Ручные проверки разработчику:
 - Открыть проект в Editor: импорт и компиляция без ошибок и предупреждений; SubScene перепекается из-за смены motion vectors.
 - В Main HUD показывает `Frame avg` и `p95`; p95 сбрасывается при рестарте и смене пресета. Кнопки, клавиши 0–4/R и экран результата работают как раньше.
 - Enemy и Projectile выглядят как раньше.
-- Протокол замера выше.
+- Изменения рабочего дерева после сборки не относятся к итерации: `ProjectSettings.asset` (`preloadedAssets` с project-wide Input Actions, Input System добавляет их при сборке) и пустая папка `Assets/Settings/Build Profiles` с `.meta`. Решить, коммитить ли их.
 
-Коммит первой части: `perf(benchmark): add p95 runner, trim frame costs`. Итоговый коммит после замера: `perf(simulation): meet 20k swarm target`.
+Коммиты: `perf(benchmark): add p95 runner, trim frame costs` (`02372d5`), затем `docs(benchmark): record 20k release p95 results` (handoff).
 
 ## Завершённые итерации
 
@@ -346,3 +356,4 @@ CSV по умолчанию — `benchmark-results.csv` в `Application.persiste
 - `GameSessionEndSystem` не читает здоровье игрока на главном потоке: итог сессии считает job. Main-thread читатели `GameSession` вне систем (`GameSessionBridge`, `BenchmarkRunner`) вызывают `CompleteDependency()` у своей query: singleton-методы `EntityQuery` только проверяют safety. `SystemAPI` и `EntityManager` завершают jobs сами.
 - Системы с main-thread доступом к `LocalTransform` (`PlayerMovementSystem`, чтение позиции игрока в Spawn и EnemyMovement) идут раньше систем, которые планируют jobs над `LocalTransform`.
 - Рендер-prefabs роя не используют per-object motion vectors (`MotionVectorGenerationMode.Camera`), пока в проекте нет TAA и motion blur.
+- Эталонное железо цели MVP: NVIDIA GeForce RTX 4070, Intel Core i7-12700, Windows 11, Direct3D12, 2560×1440. Release-замер итерации 15 на нём: stress 20k, p95 4,0–4,7 мс в трёх прогонах.
