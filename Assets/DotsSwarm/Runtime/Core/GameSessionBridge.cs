@@ -7,6 +7,10 @@ namespace DotsSwarm.Gameplay
     [DisallowMultipleComponent]
     public sealed class GameSessionBridge : MonoBehaviour
     {
+        // p95 window: the last 10 seconds at 60 FPS.
+        public const int PercentileFrames = 600;
+
+        private readonly FrameTimeHistory frameHistory = new FrameTimeHistory(PercentileFrames);
         private World sessionWorld;
         private EntityQuery sessionQuery;
         private EntityQuery benchmarkQuery;
@@ -15,6 +19,7 @@ namespace DotsSwarm.Gameplay
         private EntityQuery players;
         private GameSessionHud hud;
         private BenchmarkFrameTime frameTime;
+        private float p95Milliseconds;
         private int warmupFrames;
         private int shownHealth;
         private bool needsRefresh;
@@ -50,6 +55,9 @@ namespace DotsSwarm.Gameplay
                 hud.SetVisible(false);
                 return;
             }
+            // GameSessionEndSystem writes the session from a job, and query singleton
+            // accessors only check safety. It has finished by LateUpdate.
+            sessionQuery.CompleteDependency();
             var session = sessionQuery.GetSingleton<GameSession>();
             hud.SetVisible(session.Initialized);
             if (!session.Initialized) return;
@@ -69,15 +77,27 @@ namespace DotsSwarm.Gameplay
             var health = players.CalculateEntityCount() == 1 ? players.GetSingleton<Health>().Current : 0;
             // Damage is shown immediately rather than at the next sampling window.
             var refresh = needsRefresh || health != shownHealth;
-            if (warmupFrames > 0) warmupFrames--;
-            else refresh |= frameTime.AddFrame(Time.unscaledDeltaTime);
+            if (warmupFrames > 0)
+            {
+                warmupFrames--;
+            }
+            else
+            {
+                frameHistory.Add(Time.unscaledDeltaTime);
+                if (frameTime.AddFrame(Time.unscaledDeltaTime))
+                {
+                    // Sorting 600 samples four times a second; allocation-free after warmup.
+                    p95Milliseconds = frameHistory.Summarize().P95Milliseconds;
+                    refresh = true;
+                }
+            }
             if (!refresh) return;
 
             var benchmark = benchmarkQuery.GetSingleton<BenchmarkState>();
             // Observe counts after EndSimulation ECB playback; query caching avoids
             // entity arrays and per-frame query allocations.
             hud.Refresh(enemies.CalculateEntityCount(), projectiles.CalculateEntityCount(),
-                frameTime.Milliseconds, health, session, benchmark);
+                frameTime.Milliseconds, p95Milliseconds, health, session, benchmark);
             shownHealth = health;
             needsRefresh = false;
         }
@@ -85,6 +105,8 @@ namespace DotsSwarm.Gameplay
         private void ResetMeasurements()
         {
             frameTime = default;
+            frameHistory.Clear();
+            p95Milliseconds = 0f;
             // Exclude reset and the one-time population/mesh warmup frame.
             warmupFrames = 2;
             needsRefresh = true;
@@ -104,6 +126,7 @@ namespace DotsSwarm.Gameplay
         {
             if (sessionWorld == null || !sessionWorld.IsCreated || sessionQuery.CalculateEntityCount() != 1)
                 return;
+            sessionQuery.CompleteDependency();
             var session = sessionQuery.GetSingleton<GameSession>();
             session.RestartRequested = true;
             sessionQuery.SetSingleton(session);

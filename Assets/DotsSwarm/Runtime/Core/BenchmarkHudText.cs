@@ -9,7 +9,7 @@ namespace DotsSwarm.Gameplay
         public const int Capacity = 192;
 
         public static int Write(char[] buffer, int enemies, int projectiles, float milliseconds,
-            int playerHealth, in GameSession session, in BenchmarkState benchmark)
+            float p95Milliseconds, int playerHealth, in GameSession session, in BenchmarkState benchmark)
         {
             var index = 0;
             Append(buffer, ref index, benchmark.IsStress ? "STRESS " : "SURVIVAL");
@@ -34,12 +34,19 @@ namespace DotsSwarm.Gameplay
             Append(buffer, ref index, "   Projectiles: ");
             Number(buffer, ref index, projectiles);
             Append(buffer, ref index, "\nFrame avg: ");
-            var tenths = math.isfinite(milliseconds) ? (int)math.round(math.clamp(milliseconds, 0f, 99999f) * 10f) : 0;
+            Milliseconds(buffer, ref index, milliseconds);
+            Append(buffer, ref index, " ms   p95: ");
+            Milliseconds(buffer, ref index, p95Milliseconds);
+            Append(buffer, ref index, " ms  |  R: restart");
+            return index;
+        }
+
+        private static void Milliseconds(char[] buffer, ref int index, float value)
+        {
+            var tenths = math.isfinite(value) ? (int)math.round(math.clamp(value, 0f, 99999f) * 10f) : 0;
             Number(buffer, ref index, tenths / 10);
             buffer[index++] = '.';
             buffer[index++] = (char)('0' + tenths % 10);
-            Append(buffer, ref index, " ms  |  R: restart");
-            return index;
         }
 
         private static void Append(char[] buffer, ref int index, string value)

@@ -59,11 +59,11 @@ namespace DotsSwarm.Gameplay
             if (root.activeSelf != visible) root.SetActive(visible);
         }
 
-        public void Refresh(int enemies, int projectiles, float milliseconds, int playerHealth,
-            in GameSession session, in BenchmarkState benchmark)
+        public void Refresh(int enemies, int projectiles, float milliseconds, float p95Milliseconds,
+            int playerHealth, in GameSession session, in BenchmarkState benchmark)
         {
-            var length = BenchmarkHudText.Write(buffer, enemies, projectiles, milliseconds, playerHealth,
-                session, benchmark);
+            var length = BenchmarkHudText.Write(buffer, enemies, projectiles, milliseconds, p95Milliseconds,
+                playerHealth, session, benchmark);
             stats.SetCharArray(buffer, 0, length);
             SetStatus(session.Status);
         }

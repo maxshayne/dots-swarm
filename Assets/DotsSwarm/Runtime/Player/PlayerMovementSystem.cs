@@ -7,6 +7,9 @@ using Unity.Transforms;
 namespace DotsSwarm.Gameplay
 {
     [BurstCompile]
+    // The main-thread foreach below completes every scheduled LocalTransform job;
+    // running ahead of the enemy jobs keeps it from becoming a sync point.
+    [UpdateBefore(typeof(EnemyMovementSystem))]
     [UpdateBefore(typeof(TransformSystemGroup))]
     public partial struct PlayerMovementSystem : ISystem
     {

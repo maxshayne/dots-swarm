@@ -5,15 +5,15 @@
 ## Состояние проекта
 
 - Этап: фундамент игровой сцены
-- Выполнено: 13 из 16 MVP-итераций; итерация 14 реализована и проверена автоматически, ожидает ручной проверки и коммита
+- Выполнено: 14 из 16 MVP-итераций; итерация 15 в работе: инструменты замера и снятие sync points готовы и проверены автоматически, standalone-профилирование и замер на железе ждут разработчика
 - Репозиторий: Git инициализирован
 - Unity-проект: создан на Unity 6.4 с URP и DOTS-пакетами
 - Цель MVP: трёхминутная survivor-сессия с 20 000 активных врагов при стабильных 60 FPS
 
 > [!IMPORTANT]
-> **Текущая задача — итерация 14: Gameplay integration tests.**
+> **Текущая задача — итерация 15: Performance target.**
 >
-> Итерация 13 закоммичена (`53994c3`). Итерация 14 и незакоммиченная правка `LocalToWorld` в `SpawnSystem`/`WeaponSystem` остаются в рабочем дереве; правку лучше закоммитить отдельно до итерации 14. После ручной проверки и коммита переходить к итерации 15.
+> Итерация 14 закоммичена (`49dd015`, `539b981`). Первая часть итерации 15 в рабочем дереве, ждёт ручной проверки и коммита. Затем разработчик собирает release standalone build и запускает `-benchmark 20k` на зафиксированном железе; по результату решается, нужны ли дальнейшие оптимизации.
 
 ## Правила итерации
 
@@ -25,7 +25,45 @@
 
 ## Текущая итерация
 
-### 14. Gameplay integration tests — READY FOR MANUAL CHECK
+### 15. Performance target — IN PROGRESS: первая часть READY FOR MANUAL CHECK
+
+- [x] Считать p95 кадра: `FrameTimeHistory` хранит последние длительности кадров в кольце фиксированного размера и выдаёт avg/p50/p95/p99/max методом nearest rank. Массивы выделяются один раз; сводка сортирует копию без managed allocations. HUD показывает p95 за последние 600 кадров (~10 с при 60 FPS) рядом со средним за 0,25 с.
+- [x] Добавить автоматический бенчмарк для standalone: `dots-swarm.exe -benchmark 20k [-benchmark-warmup 20] [-benchmark-duration 30] [-benchmark-output <file.csv>]`. `BenchmarkRunner` отключает VSync и frame cap, включает stress-пресет, ждёт кадра с заполненным роем, прогревает, пишет каждый кадр по `Time.unscaledDeltaTime`, дописывает строку в CSV и закрывает player. Коды выхода: 0 — записано, 1 — неверные аргументы, 2 — нет сессии, 3 — ошибка записи.
+- [x] Убрать main-thread sync point в `GameSessionEndSystem`: чтение `Health` игрока на главном потоке ждало всю цепочку hit → transfer → damage, и `TransformSystemGroup` не мог запланироваться раньше. Итог сессии считает Burst-job.
+- [x] Закрепить `PlayerMovementSystem` перед `EnemyMovementSystem`: её main-thread foreach по `LocalTransform` иначе завершал бы jobs движения врагов и grid. В default world порядок и раньше был таким, но только по hash-сортировке; поведение не меняется.
+- [x] Отключить per-object motion vectors у Enemy и Projectile (`m_MotionVectors: 0`, Camera). Камера без TAA и motion blur их не рисует, а Entities Graphics пекла `unity_MatrixPreviousM` (64 байта на entity), каждый кадр копировала матрицы всего роя в `MatrixPreviousSystem` и загружала их на GPU. Изображение не меняется.
+- [x] Аудит без изменений кода. Managed allocations в кадре нет: HUD и bridges покрыты тестами. Grid растёт геометрически: до 32 768 элементов около 9 resize за сессию, не каждый кадр. Structural changes в установившемся режиме — только ECB-команды выстрелов, смертей и spawn, единицы за кадр. Одномоментное заполнение stress-пресета в замер не входит.
+- [ ] Собрать release standalone build, снять профиль и бенчмарк на зафиксированном железе (разработчик).
+- [ ] Если p95 > 16,67 мс, выбрать рычаг по профилю и повторить замер.
+- [x] Завершить компиляцию Unity, автоматические тесты и проверку diff.
+
+CSV по умолчанию — `benchmark-results.csv` в `Application.persistentDataPath`; относительный `-benchmark-output` считается от рабочей директории. Строка содержит avg/p50/p95/p99/max, признак цели p95, min/max врагов за запись, разрешение, VSync, тип сборки (`release`/`development`/`editor`), graphics API, GPU, CPU и версию Unity. Повторные запуски дописывают строки под одним заголовком.
+
+Проверка: Editor закрыт, Unity 6000.4.5f1 из консоли в batchmode импортировал assets и скомпилировал runtime/test assemblies без ошибок и предупреждений; все прогоны с `-burst-force-sync-compilation`. Диагностический Play Mode-прогон до правок напечатал порядок Simulation в default world (`PlayerMovementSystem` уже шла перед `SpawnSystem`, `EnemyMovementSystem` и grid) и подтвердил, что prefabs пеклись с `MotionMode = Object`. Edit Mode: 153/153 (129 исходных и 24 новых), exit code 0. Play Mode: 11/11 (8 исходных и 3 новых), ~20 с, exit code 0; тест runner записал в Editor 1k-прогон (173 кадра, p95 6,9 мс — не показатель цели). При завершении Editor после Play Mode в логе, как и в итерации 14, `Leak detected: 2 preview scene(s) were not closed prior to shutdown`. Без ошибок Burst, job safety и предупреждений о порядке систем. `git diff --check` прошёл. Standalone build не собирался, бенчмарк на железе не запускался; в открытом Editor импорт не проверялся.
+
+Первый полный Play Mode-прогон упал: `EntityQuery.GetSingleton` в этой версии Entities только проверяет safety и не завершает jobs, а `GameSessionBridge` читал `GameSession`, который теперь пишет job. Bridge и runner вызывают `CompleteDependency()` у query перед чтением.
+
+Артефакты проверки (локальные, Git игнорирует): `Logs/verify-perf-order.log`, `Logs/perf-order-results.xml`, `Logs/verify-perf-editmode.log`, `Logs/perf-editmode-results.xml`, `Logs/verify-perf-playmode.log`, `Logs/perf-playmode-results.xml`.
+
+Протокол замера (разработчику):
+1. Собрать Windows x64 standalone **без** Development Build. Закрыть фоновые приложения; ноутбук — от сети.
+2. Трижды подряд запустить `Builds\dots-swarm.exe -benchmark 20k -benchmark-output benchmark-results.csv`: 20 с прогрева и 30 с записи. Разрешение — по умолчанию проекта (1920×1080, FullScreenWindow); оно попадает в CSV.
+3. Цель выполнена, если во всех трёх строках `build = release`, `enemies_min` около 20 000 (убитых восполняет следующий update) и `p95_target_met = true` (`p95_ms ≤ 16.67`).
+4. При промахе — тот же запуск в Development Build с Profiler; строка пометится `development`. Определить, упирается ли кадр в GPU, render thread или main thread.
+
+Кандидаты, если упор в GPU: у Enemy `m_CastShadows: 1` при shadow distance 50, и весь рой рисуется второй раз в shadow map; меш врага — встроенная Sphere (768 треугольников, ~15 млн треугольников за проход при 20k). Отключение теней врагов или low-poly меш меняют картинку, поэтому решать разработчику. Если упор в main thread — смотреть playback EndSimulation ECB и загрузку данных Entities Graphics.
+
+Ручные проверки разработчику:
+- Открыть проект в Editor: импорт и компиляция без ошибок и предупреждений; SubScene перепекается из-за смены motion vectors.
+- В Main HUD показывает `Frame avg` и `p95`; p95 сбрасывается при рестарте и смене пресета. Кнопки, клавиши 0–4/R и экран результата работают как раньше.
+- Enemy и Projectile выглядят как раньше.
+- Протокол замера выше.
+
+Коммит первой части: `perf(benchmark): add p95 runner, trim frame costs`. Итоговый коммит после замера: `perf(simulation): meet 20k swarm target`.
+
+## Завершённые итерации
+
+### 14. Gameplay integration tests — COMPLETE
 
 - [x] Добавить Play Mode-сборку `DotsSwarm.Tests.PlayMode` и harness `MainSceneSession`: additive-загрузка `Main`, ожидание стриминга `ArenaSubScene` и инициализации сессии в default world, выгрузка с проверкой остатков. Шаг симуляции зафиксирован на 1/60 с через `Time.captureDeltaTime`, поэтому симулированное время не зависит от FPS Editor/batchmode.
 - [x] Подавать ввод с виртуальной клавиатуры `InputTestFixture` через настоящие `PlayerInputBridge` и `GameSessionBridge`: WASD, R, 0–4, кнопка Restart на экране результата.
@@ -43,11 +81,9 @@
 Ручные проверки разработчику:
 - Открыть проект в Editor: `DotsSwarm.Tests.PlayMode` импортируется и компилируется без ошибок и предупреждений.
 - В Main новые враги и пули появляются сразу в точке spawn/у игрока, без вспышки в центре арены.
-- Остальные изменения рабочего дерева не относятся к итерации: `DotsSwarmRenderPipeline.asset` (prefiltering Forward+/additional lights) и `UnityConnectSettings.asset` (`m_Enabled: 1`). Решить, коммитить ли их.
+- `DotsSwarmRenderPipeline.asset` (prefiltering Forward+/additional lights) и `UnityConnectSettings.asset` (`m_Enabled: 1`) закоммичены вместе с итерацией.
 
-Коммиты: `fix(render): set LocalToWorld on spawned entities` (`SpawnSystem`, `WeaponSystem`, тестовые префабы Edit Mode), затем `test(gameplay): cover full survival pipeline` (`Tests/PlayMode`, handoff)
-
-## Завершённые итерации
+Коммиты: `fix(render): set LocalToWorld on spawned entities` (`49dd015`), затем `test(gameplay): cover full survival pipeline` (`539b981`)
 
 ### 13. Game balance — COMPLETE
 
@@ -261,12 +297,6 @@
 
 ## MVP backlog
 
-- [ ] **15. Performance target**
-  - Профилировать standalone build.
-  - Устранить GC, лишние resize, sync points и structural-change bottlenecks.
-  - Проверить 20 000 отрисованных врагов с целью `p95 <= 16.67 ms` на зафиксированном железе.
-  - Коммит: `perf(simulation): meet 20k swarm target`
-
 - [ ] **16. Portfolio documentation**
   - Описать запуск, управление и архитектуру.
   - Добавить system ordering, benchmark protocol, результаты и скриншоты.
@@ -312,3 +342,7 @@
 - Финальные показатели снимаются в standalone build, а не в Editor.
 - `SpawnSystem` и `WeaponSystem` при instantiate через ECB задают и `LocalTransform`, и `LocalToWorld`: playback идёт после `TransformSystemGroup`, иначе первый отрисованный кадр берёт матрицу prefab. Поэтому prefabs врага и пули обязаны иметь `LocalToWorld`; baked Dynamic prefabs его имеют, тестовые prefabs в Edit Mode повторяют этот архетип.
 - Play Mode-тесты (категория `Integration`) гоняют настоящую Main в default world с фиксированным шагом 1/60 с; код теста выполняется между двумя полными update. Ввод идёт через `InputTestFixture` и bridges, по одному изменению клавиши за update. Edit Mode-наборы остаются местом для граничных случаев отдельных систем.
+- p95 кадра — nearest rank (наименьший кадр, не короче которого p% выборки) по реальным длительностям кадров `Time.unscaledDeltaTime`: включает ожидание GPU и present, не зависит от timeScale. Цель MVP измеряет только `BenchmarkRunner` в release standalone с выключенными VSync и frame cap: stress-пресет 20k, 20 с прогрева, 30 с записи, три запуска. HUD-p95 в Editor — только ориентир.
+- `GameSessionEndSystem` не читает здоровье игрока на главном потоке: итог сессии считает job. Main-thread читатели `GameSession` вне систем (`GameSessionBridge`, `BenchmarkRunner`) вызывают `CompleteDependency()` у своей query: singleton-методы `EntityQuery` только проверяют safety. `SystemAPI` и `EntityManager` завершают jobs сами.
+- Системы с main-thread доступом к `LocalTransform` (`PlayerMovementSystem`, чтение позиции игрока в Spawn и EnemyMovement) идут раньше систем, которые планируют jobs над `LocalTransform`.
+- Рендер-prefabs роя не используют per-object motion vectors (`MotionVectorGenerationMode.Camera`), пока в проекте нет TAA и motion blur.
