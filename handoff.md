@@ -1,19 +1,19 @@
 # DOTS Swarm — Handoff
 
-Последнее обновление: 2026-09-19
+Последнее обновление: 2026-09-20
 
 ## Состояние проекта
 
 - Этап: фундамент игровой сцены
-- Выполнено: 12 из 16 MVP-итераций; итерация 13 реализована и проверена автоматически, ожидает ручной проверки и коммита
+- Выполнено: 13 из 16 MVP-итераций; итерация 14 реализована и проверена автоматически, ожидает ручной проверки и коммита
 - Репозиторий: Git инициализирован
 - Unity-проект: создан на Unity 6.4 с URP и DOTS-пакетами
 - Цель MVP: трёхминутная survivor-сессия с 20 000 активных врагов при стабильных 60 FPS
 
 > [!IMPORTANT]
-> **Текущая задача — итерация 13: Game balance.**
+> **Текущая задача — итерация 14: Gameplay integration tests.**
 >
-> Итерации 11–12 закоммичены одним коммитом (`8312dd8`). Итерация 13 остаётся в рабочем дереве. После ручной проверки и коммита переходить к итерации 14.
+> Итерация 13 закоммичена (`53994c3`). Итерация 14 и незакоммиченная правка `LocalToWorld` в `SpawnSystem`/`WeaponSystem` остаются в рабочем дереве; правку лучше закоммитить отдельно до итерации 14. После ручной проверки и коммита переходить к итерации 15.
 
 ## Правила итерации
 
@@ -25,7 +25,31 @@
 
 ## Текущая итерация
 
-### 13. Game balance — READY FOR MANUAL CHECK
+### 14. Gameplay integration tests — READY FOR MANUAL CHECK
+
+- [x] Добавить Play Mode-сборку `DotsSwarm.Tests.PlayMode` и harness `MainSceneSession`: additive-загрузка `Main`, ожидание стриминга `ArenaSubScene` и инициализации сессии в default world, выгрузка с проверкой остатков. Шаг симуляции зафиксирован на 1/60 с через `Time.captureDeltaTime`, поэтому симулированное время не зависит от FPS Editor/batchmode.
+- [x] Подавать ввод с виртуальной клавиатуры `InputTestFixture` через настоящие `PlayerInputBridge` и `GameSessionBridge`: WASD, R, 0–4, кнопка Restart на экране результата.
+- [x] Покрыть spawn, movement, shot, damage и death в Main: baked defaults сцены; скорость, диагональ, остановку и стену; spawn по интегралу кривой в точках seed на кольце, преследование на полный шаг и `LocalToWorld` новых врагов и пуль в первом кадре; выстрел в ближайшего врага и убийство двумя попаданиями; контактный урон раз в 0,5 с до Lost на 20–60 с с HP в HUD в том же кадре; заморозку симуляции после Lost.
+- [x] Проверить рестарт и очистку ECS: кнопка Restart после Lost, R во время Running, 1k stress → Survival; враги и пули (включая disabled) удалены, игрок, cooldown, contact, spawn и таймер сброшены, prefabs сохранены, новая сессия повторяет seed с `SpawnSequence = 0`. Выгрузка Main не оставляет session entities, включая созданные в runtime.
+- [x] Привести тестовые префабы Edit Mode к baked-архетипу с `LocalToWorld`: незакоммиченная правка `SpawnSystem`/`WeaponSystem` ставит `LocalToWorld` через ECB при instantiate и без этого роняла 21 Edit Mode-тест.
+- [x] Завершить компиляцию Unity, автоматические тесты и проверку diff.
+
+Особенность `InputTestFixture`: delta-событие клавиши копирует байты массива клавиш от начала до изменённой, поэтому второе событие в том же update возвращает отпущенную первым клавишу. Тесты меняют одну клавишу за update (`Press`/`Release` с `yield`). Fixture включает leak detection со стеками для всех native-аллокаций; harness возвращает прежний режим.
+
+Проверка: Editor закрыт пользователем, Unity 6000.4.5f1 из консоли в batchmode импортировал assets и скомпилировал runtime/test assemblies без ошибок; оба прогона с `-burst-force-sync-compilation`. Play Mode: 8/8 (новые), ~10 с, exit code 0. Edit Mode: 129/129, exit code 0; до правки тестовых префабов было 108/129 из-за `LocalToWorld`. Без ошибок Burst, job safety и предупреждений о порядке систем. При завершении Editor после Play Mode-прогона лог содержит `Leak detected: 2 preview scene(s) were not closed prior to shutdown`; в Edit Mode-прогоне этого нет, тесты сами preview scenes не создают, источник не выяснен. `git diff --check` прошёл. Standalone build не запускался; в открытом Editor импорт новой сборки не проверялся.
+
+Артефакты проверки (локальные, Git игнорирует): `Logs/verify-playmode.log`, `Logs/playmode-results.xml`, `Logs/verify-editmode-integration.log`, `Logs/editmode-integration-results.xml`.
+
+Ручные проверки разработчику:
+- Открыть проект в Editor: `DotsSwarm.Tests.PlayMode` импортируется и компилируется без ошибок и предупреждений.
+- В Main новые враги и пули появляются сразу в точке spawn/у игрока, без вспышки в центре арены.
+- Остальные изменения рабочего дерева не относятся к итерации: `DotsSwarmRenderPipeline.asset` (prefiltering Forward+/additional lights) и `UnityConnectSettings.asset` (`m_Enabled: 1`). Решить, коммитить ли их.
+
+Коммиты: `fix(render): set LocalToWorld on spawned entities` (`SpawnSystem`, `WeaponSystem`, тестовые префабы Edit Mode), затем `test(gameplay): cover full survival pipeline` (`Tests/PlayMode`, handoff)
+
+## Завершённые итерации
+
+### 13. Game balance — COMPLETE
 
 - [x] Заменить постоянные 200 spawn/s кривой `rate(t) = initial + (peak − initial) · (t / ramp)^exponent`: 3 → 425 врагов/с за 160 с, exponent 2.5, дальше peak. Budget пополняется точным интегралом кривой по `SpawnState.Elapsed`, поэтому расписание не зависит от FPS и длинных кадров; рестарт сбрасывает часы кривой.
 - [x] Отражать ось spawn-смещения, выходящую за арену: у стен и в углах враги появляются на полном spawn radius, а не на игроке. Clamp остаётся запасным вариантом для арены уже spawn radius.
@@ -55,9 +79,7 @@
 - Stress-пресеты: заполнение и refill не изменились; позиции spawn у стен теперь отражаются, seed по-прежнему повторяем.
 - Оценить читаемость роя 20k и субъективную сложность. Основные ручки: `peakSpawnRate`/`rampExponent` в `ArenaSubScene` и `movementSpeed` в `Enemy.prefab`.
 
-Коммит: `feat(balance): tune three-minute swarm`
-
-## Завершённые итерации
+Коммит: `feat(balance): tune three-minute swarm` (`53994c3`)
 
 ### 12. Benchmark controls — COMPLETE
 
@@ -239,11 +261,6 @@
 
 ## MVP backlog
 
-- [ ] **14. Gameplay integration tests**
-  - Покрыть Play Mode-тестами spawn, movement, shot, damage и death.
-  - Проверить рестарт и очистку ECS-состояния.
-  - Коммит: `test(gameplay): cover full survival pipeline`
-
 - [ ] **15. Performance target**
   - Профилировать standalone build.
   - Устранить GC, лишние resize, sync points и structural-change bottlenecks.
@@ -293,3 +310,5 @@
 - Spawn-позиция остаётся на окружности spawn radius вокруг игрока. Если точка выходит за арену по оси, смещение по этой оси зеркалится; clamp к арене применяется только после этого, для арен уже spawn radius.
 - Баланс по умолчанию (итерация 13): 3 → 425 врагов/с за 160 с, exponent 2.5, spawn radius 40, лимит 20 000; враг speed 2.25 и 2 HP; оружие cooldown 0.15, range 20, пули 30 ед./с и 2 с lifetime, урон 1; игрок speed 10 и 12 HP. Контракт покрыт тестами: AFK проигрывает за 20–60 с, orbit без уклонения проигрывает до конца, лимит достигается за 10–30 с до конца сессии.
 - Финальные показатели снимаются в standalone build, а не в Editor.
+- `SpawnSystem` и `WeaponSystem` при instantiate через ECB задают и `LocalTransform`, и `LocalToWorld`: playback идёт после `TransformSystemGroup`, иначе первый отрисованный кадр берёт матрицу prefab. Поэтому prefabs врага и пули обязаны иметь `LocalToWorld`; baked Dynamic prefabs его имеют, тестовые prefabs в Edit Mode повторяют этот архетип.
+- Play Mode-тесты (категория `Integration`) гоняют настоящую Main в default world с фиксированным шагом 1/60 с; код теста выполняется между двумя полными update. Ввод идёт через `InputTestFixture` и bridges, по одному изменению клавиши за update. Edit Mode-наборы остаются местом для граничных случаев отдельных систем.

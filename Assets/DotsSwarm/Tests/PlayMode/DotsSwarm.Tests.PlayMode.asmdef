@@ -1,0 +1,30 @@
+{
+    "name": "DotsSwarm.Tests.PlayMode",
+    "rootNamespace": "DotsSwarm.Tests",
+    "references": [
+        "DotsSwarm.Runtime",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI",
+        "Unity.Collections",
+        "Unity.Entities",
+        "Unity.Entities.Graphics",
+        "Unity.InputSystem",
+        "Unity.InputSystem.TestFramework",
+        "Unity.Mathematics",
+        "Unity.Transforms"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false,
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}
